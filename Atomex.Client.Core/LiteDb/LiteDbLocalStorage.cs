@@ -57,7 +57,7 @@ namespace Atomex.LiteDb
                 throw new ArgumentNullException(nameof(password));
 
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
-            _bsonMapper = LiteDbMigration_11_to_13.CreateBsonMapper(network);
+            _bsonMapper = LiteDbMigration_11_to_14.CreateBsonMapper(network);
 
             var connectionString = $"FileName={_pathToDb};Password={_sessionPassword};Connection=direct";
 
@@ -67,7 +67,7 @@ namespace Atomex.LiteDb
 
             if (isNewDb)
             {
-                LiteDbMigration_11_to_13.InitDb(_db);
+                LiteDbMigration_11_to_14.InitDb(_db);
             }
         }
 

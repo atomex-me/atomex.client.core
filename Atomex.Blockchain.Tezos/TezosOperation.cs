@@ -52,6 +52,9 @@ namespace Atomex.Blockchain.Tezos
             Confirmations = recentBlockLevel != 0
                 ? recentBlockLevel - firstOperation.BlockLevel
                 : Math.Max((long)(DateTimeOffset.UtcNow - firstOperation.BlockTime).TotalMinutes, 0); // approximate confirmations
+
+            if (Status == TransactionStatus.Confirmed && Confirmations == 0)
+                Confirmations = 1;
         }
 
         public TezosOperation(

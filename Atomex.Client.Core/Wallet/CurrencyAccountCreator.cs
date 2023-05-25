@@ -29,15 +29,6 @@ namespace Atomex.Wallet
                     wallet: wallet,
                     localStorage: localStorage),
 
-                //"USDT" or "USDC" or "TBTC" or "WBTC" => new Erc20Account(
-                //    tokenContract: currencies
-                //        .Get<Erc20Config>(currency)
-                //        .TokenContractAddress,
-                //    currencies: currencies,
-                //    wallet: wallet,
-                //    localStorage: localStorage,
-                //    ethereumAccount: baseChainAccount as EthereumAccount),
-
                 "ERC20" => new Erc20Account(
                     tokenContract: tokenContract,
                     currencies: currencies,
@@ -51,16 +42,6 @@ namespace Atomex.Wallet
                     wallet: wallet,
                     localStorage: localStorage),
 
-                //"TZBTC" or "KUSD" => new Fa12Account(
-                //    tokenContract: currencies
-                //        .Get<Fa12Config>(currency)
-                //        .TokenContractAddress,
-                //    tokenId: 0,
-                //    currencies: currencies,
-                //    wallet: wallet,
-                //    localStorage: localStorage,
-                //    tezosAccount: baseChainAccount as TezosAccount),
-
                 "FA12" => new Fa12Account(
                     tokenContract: tokenContract,
                     tokenId: 0,
@@ -68,18 +49,6 @@ namespace Atomex.Wallet
                     wallet: wallet,
                     localStorage: localStorage,
                     tezosAccount: baseChainAccount as TezosAccount),
-
-                //"USDT_XTZ" => new Fa2Account(
-                //    tokenContract: currencies
-                //        .Get<Fa2Config>(currency)
-                //        .TokenContractAddress,
-                //    tokenId: currencies
-                //        .Get<Fa2Config>(currency)
-                //        .TokenId,
-                //    currencies: currencies,
-                //    wallet: wallet,
-                //    localStorage: localStorage,
-                //    tezosAccount: baseChainAccount as TezosAccount),
 
                 "FA2" => new Fa2Account(
                     tokenContract: tokenContract,

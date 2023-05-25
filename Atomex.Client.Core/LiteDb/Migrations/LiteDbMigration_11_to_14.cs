@@ -23,7 +23,7 @@ using SwapStatus = Atomex.Client.V1.Entities.SwapStatus;
 
 namespace Atomex.LiteDb.Migrations
 {
-    public class LiteDbMigration_11_to_13
+    public class LiteDbMigration_11_to_14
     {
         private const string Temp = "temp";
         private const string Backup = "backup";
@@ -40,7 +40,7 @@ namespace Atomex.LiteDb.Migrations
                 metadata.Delete(InitialId);
             }
 
-            db.UserVersion = LiteDbMigrationManager.Version13;
+            db.UserVersion = LiteDbMigrationManager.Version14;
         }
 
         public static LiteDbMigrationResult Migrate(

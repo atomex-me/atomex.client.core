@@ -14,7 +14,7 @@ using Atomex.Wallet.Tezos;
 
 namespace Atomex.Wallets.Tezos
 {
-    public class TezosAddressOperatioPerBlockManager : IDisposable
+    public class TezosAddressOperationBatcher : IDisposable
     {
         private class TezosOperationCompletionEvent
         {
@@ -35,8 +35,12 @@ namespace Atomex.Wallets.Tezos
             }
         }
 
+
         private const int ConfirmationCheckIntervalSec = 5;
         private const int ConfirmationWaitingTimeOutInSec = 60;
+
+        private readonly Action<string> _onComplete;
+        private readonly string _address;
         private readonly TezosAccount _account;
         private readonly AsyncQueue<TezosOperationCompletionEvent> _operationsQueue;
         private CancellationTokenSource _cts;
@@ -51,9 +55,15 @@ namespace Atomex.Wallets.Tezos
             !_worker.IsCanceled &&
             !_worker.IsFaulted;
 
-        public TezosAddressOperatioPerBlockManager(TezosAccount account, ILogger logger = null)
+        public TezosAddressOperationBatcher(
+            string address,
+            TezosAccount account,
+            Action<string> onComplete,
+            ILogger logger = null)
         {
+            _address = address ?? throw new ArgumentNullException(nameof(address));
             _account = account ?? throw new ArgumentNullException(nameof(account));
+            _onComplete = onComplete;
             _operationsQueue = new AsyncQueue<TezosOperationCompletionEvent>();
             _confirmedEvent = new ManualResetEventAsync(isSet: false);
             _logger = logger;
@@ -137,6 +147,13 @@ namespace Atomex.Wallets.Tezos
                     operationCompletionEvents = await GetOperationGroupsFromQueueAsync(_operationsQueue, _cts.Token)
                         .ConfigureAwait(false);
 
+                    if (!operationCompletionEvents.Any())
+                    {
+                        // no operations -> stop batcher
+                        _onComplete?.Invoke(_address);
+                        break;
+                    }
+
                     var operationsParameters = new List<TezosOperationParameters>();
 
                     foreach (var og in operationCompletionEvents)
@@ -215,6 +232,8 @@ namespace Atomex.Wallets.Tezos
                             op.CompleteWithResult(TezosOperationRequestResult.FromError(request: null, error));
                 }
             }
+
+            _logger?.LogDebug("Batcher for {@addr} completed");
         }
 
         private static async Task<List<TezosOperationCompletionEvent>> GetOperationGroupsFromQueueAsync(
@@ -222,6 +241,9 @@ namespace Atomex.Wallets.Tezos
             CancellationToken cancellationToken)
         {
             var operationGroups = new List<TezosOperationCompletionEvent>();
+
+            if (queue.Count == 0)
+                return operationGroups;
 
             do
             {
@@ -258,15 +280,15 @@ namespace Atomex.Wallets.Tezos
         }
     }
 
-    public class TezosOperationPerBlockManager : IDisposable
+    public class TezosOperationBatcher : IDisposable
     {
-        private readonly ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>> _batchers;
+        private readonly ConcurrentDictionary<string, Lazy<TezosAddressOperationBatcher>> _batchers;
         private bool _disposedValue;
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
-        public TezosOperationPerBlockManager(ILogger logger = null)
+        public TezosOperationBatcher(ILogger logger = null)
         {
-            _batchers = new ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>>();
+            _batchers = new ConcurrentDictionary<string, Lazy<TezosAddressOperationBatcher>>();
             _logger = logger;
         }
 
@@ -279,18 +301,32 @@ namespace Atomex.Wallets.Tezos
 
             var lazyBatcher = _batchers.GetOrAdd(
                 key: from,
-                valueFactory: a => new Lazy<TezosAddressOperatioPerBlockManager>(
-                    () => new TezosAddressOperatioPerBlockManager(account, _logger)));
+                valueFactory: a => new Lazy<TezosAddressOperationBatcher>(
+                    () => new TezosAddressOperationBatcher(
+                        address: from,
+                        account: account,
+                        onComplete: (address) =>
+                        {
+                            if (!_batchers.TryRemove(address, out var _))
+                            {
+                                _logger?.LogWarning("Can't find batcher for address {@addr}", address);
+                            }
+
+                            _logger?.LogDebug("Batcher for {@addr} removed from batchers list");
+                        },
+                        logger: _logger)));
 
             var batcher = lazyBatcher.Value;
+
+            var sendOperationTask = batcher
+                .SendOperationAsync(
+                    operationsParameters: operationsParameters,
+                    cancellationToken: cancellationToken);
 
             if (!batcher.IsRunning)
                 batcher.Start();
 
-            return await batcher
-                .SendOperationAsync(
-                    operationsParameters: operationsParameters,
-                    cancellationToken: cancellationToken)
+            return await sendOperationTask
                 .ConfigureAwait(false);
         }
 

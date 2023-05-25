@@ -1,38 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Linq;
+
+using LiteDB;
 
 using Atomex.Blockchain;
 using Atomex.Blockchain.Bitcoin;
-using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common.Bson;
 using Atomex.Core;
-
-using LiteDB;
 using Atomex.Wallets;
-using System.Linq;
 
 namespace Atomex.LiteDb.Migrations
 {
-    public class LiteDbMigration_12_to_13
+    public class LiteDbMigration_12_to_14
     {
         private const string OrderIdKey = "OrderId";
-
-        public static void InitDb(LiteDatabase db)
-        {
-            const string InitialId = "0";
-
-            foreach (var c in new string[] { "btc", "ltc", "xtz", "eth", "erc20", "fa12", "fa2" })
-            {
-                var metadata = db.GetCollection<TransactionMetadata>($"{c}_meta");
-                metadata.Insert(new TransactionMetadata { Id = InitialId });
-                metadata.Delete(InitialId);
-            }
-
-            db.UserVersion = LiteDbMigrationManager.Version13;
-        }
 
         public static LiteDbMigrationResult Migrate(
             string pathToDb,
@@ -68,7 +51,7 @@ namespace Atomex.LiteDb.Migrations
                 var upserted = collection.Upsert(txs);
             }
 
-            db.UserVersion = LiteDbMigrationManager.Version13;
+            db.UserVersion = LiteDbMigrationManager.Version14;
 
             return new LiteDbMigrationResult();
         }

@@ -158,7 +158,7 @@ namespace Atomex.Wallet
             string currency,
             string? tokenContract = null,
             BigInteger? tokenId = null) where T : class, ICurrencyAccount =>
-            GetCurrencyAccount(currency, tokenContract, tokenId) as T;
+            (T)GetCurrencyAccount(currency, tokenContract, tokenId);
 
         public string GetUserId(uint keyIndex = 0)
         {

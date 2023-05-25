@@ -30,25 +30,25 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosAccount : CurrencyAccount, IEstimatable, IHasTokens
     {
-        private static TezosOperationPerBlockManager? _operationsBatcher;
-        public static TezosOperationPerBlockManager OperationsBatcher
+        private static TezosOperationBatcher? _operationBatcher;
+        public static TezosOperationBatcher OperationBatcher
         {
             get
             {
-                var instance = _operationsBatcher;
+                var instance = _operationBatcher;
 
                 if (instance == null)
                 {
-                    Interlocked.CompareExchange(ref _operationsBatcher, new TezosOperationPerBlockManager(), null);
-                    instance = _operationsBatcher;
+                    Interlocked.CompareExchange(ref _operationBatcher, new TezosOperationBatcher(), null);
+                    instance = _operationBatcher;
                 }
 
                 return instance;
             }
         }
 
-        private readonly TezosRevealChecker _tezosRevealChecker;
-        private readonly TezosAllocationChecker _tezosAllocationChecker;
+        private readonly TezosRevealChecker _revealChecker;
+        private readonly TezosAllocationChecker _allocationChecker;
 
         public TezosAccount(
             ICurrencies currencies,
@@ -58,8 +58,8 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Config;
 
-            _tezosRevealChecker = new TezosRevealChecker(xtz);
-            _tezosAllocationChecker = new TezosAllocationChecker(xtz);
+            _revealChecker = new TezosRevealChecker(xtz);
+            _allocationChecker = new TezosAllocationChecker(xtz);
         }
 
         public TezosConfig Config => Currencies.Get<TezosConfig>(Currency);
@@ -70,7 +70,7 @@ namespace Atomex.Wallet.Tezos
             IEnumerable<TezosOperationParameters> transactions,
             CancellationToken cancellationToken = default)
         {
-            return OperationsBatcher
+            return OperationBatcher
                 .SendOperationsAsync(
                     account: this,
                     operationsParameters: transactions,
@@ -124,7 +124,7 @@ namespace Atomex.Wallet.Tezos
             if (storageLimit == null)
                 throw new ArgumentNullException(nameof(storageLimit), "StorageLimit must be not null. Please use StorageLimit.FromValue() or StorageLimit.FromNetwork()");
 
-            return await OperationsBatcher
+            return await OperationBatcher
                 .SendOperationsAsync(
                     account: this,
                     operationsParameters: new List<TezosOperationParameters>
@@ -174,7 +174,7 @@ namespace Atomex.Wallet.Tezos
             if (storageLimit == null)
                 throw new ArgumentNullException(nameof(storageLimit), "StorageLimit must be not null. Please use StorageLimit.FromValue() or StorageLimit.FromNetwork()");
 
-            return await OperationsBatcher
+            return await OperationBatcher
                 .SendOperationsAsync(
                     account: this,
                     operationsParameters: new List<TezosOperationParameters>
@@ -572,7 +572,7 @@ namespace Atomex.Wallet.Tezos
             string from,
             CancellationToken cancellationToken = default)
         {
-            return _tezosRevealChecker
+            return _revealChecker
                 .IsRevealedAsync(from, cancellationToken);
         }
 
@@ -580,7 +580,7 @@ namespace Atomex.Wallet.Tezos
             string? to,
             CancellationToken cancellationToken = default)
         {
-            return !string.IsNullOrEmpty(to) && await _tezosAllocationChecker
+            return !string.IsNullOrEmpty(to) && await _allocationChecker
                 .IsAllocatedAsync(to, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -718,16 +718,16 @@ namespace Atomex.Wallet.Tezos
                 Internals = new List<InternalTransactionMetadata>(),
             };
 
-            var fromAddress = await GetAddressAsync(operation.From, cancellationToken)
-                .ConfigureAwait(false);
-
-            var isFromSelf = fromAddress != null;
-
             foreach (var o in operation.Operations)
             {
                 var operationType = TransactionType.Unknown;
                 var operationAmount = BigInteger.Zero;
                 var operationFee = BigInteger.Zero;
+
+                var fromAddress = await GetAddressAsync(o.Sender.Address, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var isFromSelf = fromAddress != null;
 
                 if (isFromSelf)
                     operationType |= TransactionType.Output;
