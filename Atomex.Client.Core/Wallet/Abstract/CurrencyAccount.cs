@@ -12,6 +12,7 @@ using Atomex.Common;
 using Atomex.Wallets;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Bips;
+using System.Linq;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -151,7 +152,7 @@ namespace Atomex.Wallet.Abstract
                 ? lastActiveAddress.KeyPath.SetIndex(
                     keyPathPattern: keyPathPattern,
                     indexPattern: KeyPathExtensions.IndexPattern,
-                    indexValue: $"{lastActiveAddress.KeyIndex + 1}")
+                    indexValue: $"{lastActiveAddress.KeyIndex + 1}{(keyPathPattern.IsIndexHardened() ? KeyPathExtensions.HardenedSuffix : "")}")
                 : keyPathPattern
                     .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
                     .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
@@ -166,6 +167,58 @@ namespace Atomex.Wallet.Abstract
                 .ConfigureAwait(false);
 
             return freeAddress;
+        }
+
+        public virtual Task<WalletAddress> AddNewExternalAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return AddNewAddressAsync(
+                keyType: CurrencyConfig.StandardKey,
+                chain: Bip44.External,
+                cancellationToken: cancellationToken);
+        }
+
+        protected async Task<WalletAddress> AddNewAddressAsync(
+            int keyType,
+            uint chain,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currencies.GetByName(Currency);
+
+            var keyPathPattern = currency
+                .GetKeyPathPattern(keyType)
+                .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
+
+            var addresses = await LocalStorage
+                .GetAddressesAsync(Currency, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var addressWithMaxIndex = addresses
+                .Where(a => a.KeyPath.IsMatch(keyPathPattern))
+                .MaxByOrDefault(w => w.KeyIndex);
+
+            if (addressWithMaxIndex == null)
+                return await GetFreeAddressAsync(
+                        keyType: keyType,
+                        chain: chain,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+            var keyPath = addressWithMaxIndex.KeyPath.SetIndex(
+                    keyPathPattern: keyPathPattern,
+                    indexPattern: KeyPathExtensions.IndexPattern,
+                    indexValue: $"{addressWithMaxIndex.KeyIndex + 1}{(keyPathPattern.IsIndexHardened() ? KeyPathExtensions.HardenedSuffix : "")}");
+
+            var newAddress = await DivideAddressAsync(
+                    keyPath: keyPath,
+                    keyType: keyType)
+                .ConfigureAwait(false);
+
+            _ = await LocalStorage
+                .UpsertAddressAsync(newAddress, cancellationToken)
+                .ConfigureAwait(false);
+
+            return newAddress;
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(

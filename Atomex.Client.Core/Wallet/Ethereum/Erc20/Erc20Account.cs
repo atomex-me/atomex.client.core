@@ -635,7 +635,7 @@ namespace Atomex.Wallet.Ethereum
                 ? lastActiveAddress.KeyPath.SetIndex(
                     keyPathPattern: keyPathPattern,
                     indexPattern: KeyPathExtensions.IndexPattern,
-                    indexValue: $"{lastActiveAddress.KeyIndex + 1}")
+                    indexValue: $"{lastActiveAddress.KeyIndex + 1}{(keyPathPattern.IsIndexHardened() ? KeyPathExtensions.HardenedSuffix : "")}")
                 : keyPathPattern
                     .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
                     .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
@@ -650,6 +650,12 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             return freeAddress;
+        }
+
+        public Task<WalletAddress> AddNewExternalAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException("Not implemented for Ethereum tokens");
         }
 
         #endregion Addresses

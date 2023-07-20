@@ -42,6 +42,9 @@ namespace Atomex.Wallets.Abstract
         Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default);
 
+        Task<WalletAddress> AddNewExternalAddressAsync(
+            CancellationToken cancellationToken = default);
+
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             CancellationToken cancellationToken = default);
 

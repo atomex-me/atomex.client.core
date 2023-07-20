@@ -18,6 +18,7 @@ using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets;
 using Atomex.Wallets.Abstract;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -509,10 +510,7 @@ namespace Atomex.Wallet.Tezos
             var walletAddress = Wallet.GetAddress(
                 currency: XtzConfig,
                 keyPath: keyPath,
-                keyType: keyType);
-
-            if (walletAddress == null)
-                throw new Exception($"Can't get wallet address for key path {keyPath} and key type {keyType}");
+                keyType: keyType) ?? throw new Exception($"Can't get wallet address for key path {keyPath} and key type {keyType}");
 
             walletAddress.Currency = TokenType;
 
@@ -635,6 +633,12 @@ namespace Atomex.Wallet.Tezos
                     keyPath: xtzRedeemAddress.KeyPath,
                     keyType: xtzRedeemAddress.KeyType)
                 .ConfigureAwait(false);
+        }
+
+        public Task<WalletAddress> AddNewExternalAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException("Not implemented for Tezos tokens");
         }
 
         public Task<WalletAddress> GetRedeemAddressAsync( // todo: match it with xtz balances

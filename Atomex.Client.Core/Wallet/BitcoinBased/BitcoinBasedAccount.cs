@@ -19,6 +19,7 @@ using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -422,6 +423,15 @@ namespace Atomex.Wallet.BitcoinBased
             return GetFreeAddressAsync(
                 keyType: BitcoinBasedConfig.SegwitKey,
                 chain: Bip44.Internal,
+                cancellationToken: cancellationToken);
+        }
+
+        public override Task<WalletAddress> AddNewExternalAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return AddNewAddressAsync(
+                keyType: BitcoinBasedConfig.SegwitKey,
+                chain: Bip44.External,
                 cancellationToken: cancellationToken);
         }
 

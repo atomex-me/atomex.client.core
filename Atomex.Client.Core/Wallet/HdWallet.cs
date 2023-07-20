@@ -66,10 +66,7 @@ namespace Atomex.Wallet
             var publicKey = KeyStorage.GetPublicKey(
                 currency: currency,
                 keyPath: keyPath,
-                keyType: keyType);
-
-            if (publicKey == null)
-                throw new Exception($"Can't get public key for {currency?.Name} with key path {keyPath} and key type {keyType}");
+                keyType: keyType) ?? throw new Exception($"Can't get public key for {currency?.Name} with key path {keyPath} and key type {keyType}");
 
             var address = currency.AddressFromKey(publicKey, keyType);
 

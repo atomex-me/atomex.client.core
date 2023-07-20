@@ -5,7 +5,7 @@ namespace Atomex.Common
     public static class KeyPathExtensions
     {
         private const char IndexSeparator = '/';
-        private const char HardenedSuffix = '\'';
+        public const char HardenedSuffix = '\'';
         public const string PurposePattern = "{p}";
         public const string CoinTypePattern = "{t}";
         public const string AccountPattern = "{a}";
@@ -85,5 +85,8 @@ namespace Atomex.Common
 
         public static bool IsUnsignedInteger(this string index) =>
             uint.TryParse(index.TrimEnd(HardenedSuffix), out _);
+
+        public static bool IsIndexHardened(this string keyPattern) =>
+            keyPattern.Contains($"{IndexPattern}{HardenedSuffix}");
     }
 }
