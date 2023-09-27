@@ -21,14 +21,14 @@ namespace Atomex.MarketData.TezTools
             Quotes = new Dictionary<string, Quote>();
         }
 
-        public override Quote GetQuote(string currency, string baseCurrency)
+        public override Quote? GetQuote(string currency, string baseCurrency)
         {
             return Quotes.TryGetValue(currency?.ToLower() ?? string.Empty, out var tokenRate)
                 ? tokenRate
                 : null;
         }
 
-        public override Quote GetQuote(string symbol)
+        public override Quote? GetQuote(string symbol)
         {
             return Quotes.TryGetValue(symbol?.ToLower() ?? string.Empty, out var tokenRate)
                 ? tokenRate

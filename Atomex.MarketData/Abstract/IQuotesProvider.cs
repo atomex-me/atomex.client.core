@@ -15,7 +15,7 @@ namespace Atomex.MarketData.Abstract
 
         void Start();
         void Stop();
-        Quote GetQuote(string currency, string baseCurrency);
-        Quote GetQuote(string symbol);
+        Quote? GetQuote(string currency, string baseCurrency);
+        Quote? GetQuote(string symbol);
     }
 }

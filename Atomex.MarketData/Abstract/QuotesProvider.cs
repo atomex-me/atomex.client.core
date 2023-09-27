@@ -31,7 +31,7 @@ namespace Atomex.MarketData.Abstract
             Log = log;
         }
 
-        public void Start()
+        public virtual void Start()
         {
             if (IsRunning)
             {
@@ -67,7 +67,7 @@ namespace Atomex.MarketData.Abstract
             Log?.LogInformation("Background update task finished");
         }
 
-        public void Stop()
+        public virtual void Stop()
         {
             if (IsRunning)
             {
@@ -79,8 +79,8 @@ namespace Atomex.MarketData.Abstract
             }
         }
 
-        public abstract Quote GetQuote(string currency, string baseCurrency);
-        public abstract Quote GetQuote(string symbol);
+        public abstract Quote? GetQuote(string currency, string baseCurrency);
+        public abstract Quote? GetQuote(string symbol);
         public abstract Task UpdateAsync(CancellationToken cancellation = default);
 
         protected void RiseQuotesUpdatedEvent(EventArgs args)

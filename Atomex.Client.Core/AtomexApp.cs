@@ -57,7 +57,7 @@ namespace Atomex
             if (AtomexClient != null)
                 StartAtomexClient();
 
-            QuotesProvider?.Start();
+            //QuotesProvider?.Start();
             OrderBooksProvider?.Start();
             CurrenciesUpdater?.Start();
             SymbolsUpdater?.Start();
@@ -70,7 +70,7 @@ namespace Atomex
             if (AtomexClient != null)
                 StopAtomexClient();
 
-            QuotesProvider?.Stop();
+            //QuotesProvider?.Stop();
             OrderBooksProvider?.Stop();
             CurrenciesUpdater?.Stop();
             SymbolsUpdater?.Stop();
@@ -98,10 +98,14 @@ namespace Atomex
             TransactionsTracker.Start();
 
             _balanceUpdater.Start();
+
+            QuotesProvider.Start();
         }
 
         private async void StopAtomexClient()
         {
+            QuotesProvider.Stop();
+
             _balanceUpdater.Stop();
 
             // stop transactions tracker

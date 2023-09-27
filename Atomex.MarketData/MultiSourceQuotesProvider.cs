@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,19 +12,39 @@ namespace Atomex.MarketData
 {
     public class MultiSourceQuotesProvider : QuotesProvider
     {
-        private readonly QuotesProvider[] _providers;
+        private List<QuotesProvider>? _providers;
+        public Action<MultiSourceQuotesProvider>? ConfigureOnStart;
 
-        public MultiSourceQuotesProvider(ILogger? log = null, params QuotesProvider[] providers)
+        public MultiSourceQuotesProvider(ILogger? log = null)
         {
             Log = log;
-            _providers = providers ?? throw new ArgumentNullException(nameof(providers));
-            
-            if (_providers.Length == 0)
-                throw new ArgumentException("At least one quote provider must be used");
         }
 
-        public override Quote GetQuote(string currency, string baseCurrency)
+        public void AddProviders(params QuotesProvider[] providers)
         {
+            _providers ??= new List<QuotesProvider>();
+            _providers.AddRange(providers);
+        }
+
+        public override void Start()
+        {
+            ConfigureOnStart?.Invoke(this);
+            
+            base.Start();
+        }
+
+        public override void Stop()
+        {
+            base.Stop();
+
+            _providers?.Clear();
+        }
+
+        public override Quote? GetQuote(string currency, string baseCurrency)
+        {
+            if (_providers == null)
+                return null;
+
             foreach (var provider in _providers)
             {
                 var quote = provider.GetQuote(currency, baseCurrency);
@@ -35,8 +56,11 @@ namespace Atomex.MarketData
             return null;
         }
 
-        public override Quote GetQuote(string symbol)
+        public override Quote? GetQuote(string symbol)
         {
+            if (_providers == null)
+                return null;
+
             foreach (var provider in _providers)
             {
                 var quote = provider.GetQuote(symbol);
@@ -50,11 +74,16 @@ namespace Atomex.MarketData
 
         public override async Task UpdateAsync(CancellationToken cancellation = default)
         {
-            var updateTasks = _providers.Select(p => p.UpdateAsync(cancellation));
-            await Task.WhenAll(updateTasks);
-            Log?.LogDebug("Update multisource quotes finished");
+            var updateTasks = _providers?.Select(p => p.UpdateAsync(cancellation));
 
-            var isAvailable = _providers.Any(provider => provider.IsAvailable);
+            if (updateTasks != null && updateTasks.Any())
+            {
+                await Task.WhenAll(updateTasks);
+
+                Log?.LogDebug("Update multisource quotes finished");
+            }
+
+            var isAvailable = _providers?.Any(provider => provider.IsAvailable) ?? false;
             LastUpdateTime = DateTime.Now;
             
             if (isAvailable)

@@ -74,12 +74,12 @@ namespace Atomex.MarketData.Bitfinex
             _ws.CloseAsync();
         }
 
-        public Quote GetQuote(string currency, string baseCurrency) =>
+        public Quote? GetQuote(string currency, string baseCurrency) =>
             _quotes.TryGetValue($"t{currency}{baseCurrency}", out var rate)
                 ? rate
                 : null;
 
-        public Quote GetQuote(string symbol) =>
+        public Quote? GetQuote(string symbol) =>
             _quotes.TryGetValue($"t{symbol.Replace("/", "")}", out var rate)
                 ? rate
                 : null;

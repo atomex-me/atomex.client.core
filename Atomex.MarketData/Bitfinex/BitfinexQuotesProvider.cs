@@ -46,12 +46,12 @@ namespace Atomex.MarketData.Bitfinex
                 .ToDictionary(currency => currency, currency => new Quote());
         }
 
-        public override Quote GetQuote(string currency, string baseCurrency) =>
+        public override Quote? GetQuote(string currency, string baseCurrency) =>
             QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol)
                 ? Quotes.TryGetValue(symbol, out var rate) ? rate : null
                 : null;
 
-        public override Quote GetQuote(string symbol) =>
+        public override Quote? GetQuote(string symbol) =>
             QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s)
                 ? Quotes.TryGetValue(s, out var rate) ? rate : null
                 : null;
